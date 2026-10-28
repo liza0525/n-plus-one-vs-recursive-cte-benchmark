@@ -1,0 +1,12 @@
+-- A: 노드 하나의 자식 조회 (루트)
+-- parameters: {'param_1': 1}
+SELECT categories.id AS categories_id, categories.parent_id AS categories_parent_id, categories.name AS categories_name 
+FROM categories 
+WHERE categories.parent_id = %(param_1)s::INTEGER
+
+Seq Scan on categories  (cost=0.00..189.00 rows=10 width=17) (actual time=0.016..0.934 rows=10 loops=1)
+  Filter: (parent_id = 1)
+  Rows Removed by Filter: 9990
+  Buffers: shared hit=64
+Planning Time: 0.082 ms
+Execution Time: 0.957 ms

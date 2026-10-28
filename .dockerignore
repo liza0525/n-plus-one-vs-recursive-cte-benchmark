@@ -1,0 +1,6 @@
+results/
+.git/
+__pycache__/
+.venv/
+README.md
+docs/

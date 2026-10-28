@@ -1,0 +1,30 @@
+-- B: 재귀 CTE
+-- parameters: {'param_1': 1, 'depth_1': 1}
+WITH RECURSIVE category_cte(id, name, c_path, depth) AS 
+(SELECT categories.id AS id, categories.name AS name, ARRAY[categories.parent_id] AS c_path, %(param_1)s::INTEGER AS depth 
+FROM categories 
+WHERE categories.parent_id IS NULL UNION ALL SELECT categories.id AS categories_id, categories.name AS categories_name, category_cte.c_path || ARRAY[categories.parent_id] AS anon_1, category_cte.depth + %(depth_1)s::INTEGER AS anon_2 
+FROM categories, category_cte 
+WHERE categories.parent_id = category_cte.id)
+ SELECT category_cte.id AS category_cte_id, category_cte.name AS category_cte_name, category_cte.c_path AS category_cte_c_path, category_cte.depth AS category_cte_depth 
+FROM category_cte
+
+CTE Scan on category_cte  (cost=2192.76..2201.18 rows=421 width=72) (actual time=0.011..20.128 rows=10000 loops=1)
+  Buffers: shared hit=448
+  CTE category_cte
+    ->  Recursive Union  (cost=0.00..2192.76 rows=421 width=49) (actual time=0.010..16.614 rows=10000 loops=1)
+          Buffers: shared hit=448
+          ->  Seq Scan on categories  (cost=0.00..164.00 rows=1 width=49) (actual time=0.008..0.501 rows=1 loops=1)
+                Filter: (parent_id IS NULL)
+                Rows Removed by Filter: 9999
+                Buffers: shared hit=64
+          ->  Hash Join  (cost=0.33..202.45 rows=42 width=49) (actual time=0.756..2.394 rows=1666 loops=6)
+                Hash Cond: (categories_1.parent_id = category_cte_1.id)
+                Buffers: shared hit=384
+                ->  Seq Scan on categories categories_1  (cost=0.00..164.00 rows=10000 width=17) (actual time=0.002..0.599 rows=10000 loops=6)
+                      Buffers: shared hit=384
+                ->  Hash  (cost=0.20..0.20 rows=10 width=40) (actual time=0.423..0.423 rows=1667 loops=6)
+                      Buckets: 8192 (originally 1024)  Batches: 1 (originally 1)  Memory Usage: 704kB
+                      ->  WorkTable Scan on category_cte category_cte_1  (cost=0.00..0.20 rows=10 width=40) (actual time=0.001..0.158 rows=1667 loops=6)
+Planning Time: 0.112 ms
+Execution Time: 20.886 ms

@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16.4
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tree
+    # 호스트(venv, psql, DB 툴)에서 직접 접속용. 이 PC 안에서만 열리게 127.0.0.1 에 묶는다
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tree"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # 네트워크 지연 조건용 프록시. bench.py 가 API(8474)로 db 프록시(5433)와 지연을 설정한다
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    ports:
+      - "127.0.0.1:8474:8474"  # 관리 API
+      - "127.0.0.1:5433:5433"  # 지연이 걸리는 db 프록시
+    depends_on:
+      db:
+        condition: service_healthy
+
+  bench:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+      toxiproxy:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/tree
+      PROXY_DATABASE_URL: postgresql+psycopg://postgres:postgres@toxiproxy:5433/tree
+      TOXIPROXY_URL: http://toxiproxy:8474
+    # 결과 파일이 호스트 사용자 소유로 생기도록
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    volumes:
+      - ./results:/app/results
